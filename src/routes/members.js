@@ -2,21 +2,35 @@ const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/auth');
 const db = require('../db/db');
+const bcrypt = require('bcryptjs');
 
 router.post('/', auth, async (req, res) => {
   try {
-    const { name, groupId, email } = req.body;
+    const { full_name, email, phone, role, group_id, password } = req.body;
 
-    if (!name || !groupId) {
-      return res.status(400).json({ error: 'name and groupId are required' });
+    if (!full_name || !group_id || !email) {
+      return res.status(400).json({ error: 'full_name, email and group_id are required' });
     }
 
+    const hashedPassword = password ? await bcrypt.hash(password, 10) : null;
+
     await db.execute(
-      'INSERT INTO members (name, email, group_id) VALUES (?, ?, ?)',
-      [name, email || null, groupId]
+      'INSERT INTO members (name, email, phone, role, group_id) VALUES (?, ?, ?, ?, ?)',
+      [full_name, email, phone || null, role || 'member', group_id]
     );
 
-    res.json({ message: 'Member added' });
+    // Also create a users record so member can log in
+    if (email && password) {
+      const [existing] = await db.execute('SELECT id FROM users WHERE email = ?', [email]);
+      if (existing.length === 0) {
+        await db.execute(
+          'INSERT INTO users (email, password, role) VALUES (?, ?, ?)',
+          [email, hashedPassword, role || 'member']
+        );
+      }
+    }
+
+    res.json({ message: 'Member added successfully' });
   } catch (err) {
     console.error('MEMBER ADD ERROR:', err);
     res.status(500).json({ error: err.message });
