@@ -4,20 +4,21 @@ const db = require('../db/db');
 
 router.post('/', auth, async (req, res) => {
   try {
-    const { memberId, amount, groupId } = req.body;
+    const { member_id, group_id, amount, month, status } = req.body;
 
-    if (!memberId || !amount || !groupId) {
-      return res.status(400).json({ error: 'memberId, amount and groupId are required' });
+    if (!member_id || !group_id || !amount || !month) {
+      return res.status(400).json({ error: 'member_id, group_id, amount and month are required' });
     }
 
-    const month = new Date().toISOString().slice(0, 10);
+    // Convert month from "2026-05" to "2026-05-01"
+    const monthDate = `${month}-01`;
 
     await db.execute(
-      'INSERT INTO contributions (member_id, group_id, amount, month) VALUES (?, ?, ?, ?)',
-      [memberId, groupId, amount, month]
+      'INSERT INTO contributions (member_id, group_id, amount, month, status) VALUES (?, ?, ?, ?, ?)',
+      [member_id, group_id, amount, monthDate, status || 'pending']
     );
 
-    res.json({ message: 'Contribution submitted' });
+    res.json({ message: 'Contribution recorded successfully' });
   } catch (err) {
     console.error('CONTRIBUTION ERROR:', err);
     res.status(500).json({ error: err.message });
