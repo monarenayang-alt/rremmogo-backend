@@ -2,23 +2,22 @@ const router = require('express').Router();
 const auth = require('../middleware/auth');
 const db = require('../db/db');
 
-// GET /dashboard/stats
 router.get('/stats', auth, async (req, res) => {
   try {
     const [[{ totalMembers }]] = await db.execute(
-      'SELECT COUNT(*) as totalMembers FROM Member'
+      'SELECT COUNT(*) as totalMembers FROM members'
     );
 
     const [[{ monthlyContributions }]] = await db.execute(
-      'SELECT COALESCE(SUM(amount), 0) as monthlyContributions FROM Contribution WHERE MONTH(month) = MONTH(CURDATE()) AND YEAR(month) = YEAR(CURDATE())'
+      'SELECT COALESCE(SUM(amount), 0) as monthlyContributions FROM contributions WHERE MONTH(month) = MONTH(CURDATE()) AND YEAR(month) = YEAR(CURDATE())'
     );
 
     const [[{ activeLoans }]] = await db.execute(
-      'SELECT COUNT(*) as activeLoans FROM Contribution WHERE status = "pending"'
+      'SELECT COUNT(*) as activeLoans FROM loans WHERE status = "pending"'
     );
 
     const [[{ pendingApprovals }]] = await db.execute(
-      'SELECT COUNT(*) as pendingApprovals FROM Contribution WHERE status = "pending"'
+      'SELECT COUNT(*) as pendingApprovals FROM Approval WHERE decision = "pending"'
     );
 
     res.json({
@@ -28,6 +27,7 @@ router.get('/stats', auth, async (req, res) => {
       pendingApprovals,
     });
   } catch (error) {
+    console.error('DASHBOARD ERROR:', error);
     res.status(500).json({ message: 'Failed to load dashboard stats', error: error.message });
   }
 });
